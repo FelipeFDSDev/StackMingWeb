@@ -1,0 +1,190 @@
+[
+    {
+        "id": "b3b1d4d0f94076a4",
+        "type": "tab",
+        "label": "Fluxo 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "6ec067454af33e02",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "13.220.96.1",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "0a86fa189bd2cd3c",
+        "type": "influxdb",
+        "hostname": "http://d_influxdb",
+        "port": 8086,
+        "protocol": "http",
+        "database": "databasehttp://13.220.96.1:8082/#editor-tab-properties",
+        "name": "",
+        "usetls": false,
+        "tls": "",
+        "influxdbVersion": "2.0",
+        "url": "http://d_influxdb:8086",
+        "timeout": 10,
+        "rejectUnauthorized": true
+    },
+    {
+        "id": "8523e12d841d43a0",
+        "type": "mqtt in",
+        "z": "b3b1d4d0f94076a4",
+        "name": "",
+        "topic": "fatec/pbl01",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "6ec067454af33e02",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 240,
+        "y": 220,
+        "wires": [
+            [
+                "8161ca3b957f4f90"
+            ]
+        ]
+    },
+    {
+        "id": "67275c2a3c56e22a",
+        "type": "debug",
+        "z": "b3b1d4d0f94076a4",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 780,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "8161ca3b957f4f90",
+        "type": "json",
+        "z": "b3b1d4d0f94076a4",
+        "name": "",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 430,
+        "y": 220,
+        "wires": [
+            [
+                "4ebdb8f9a97dec2b"
+            ]
+        ]
+    },
+    {
+        "id": "4ebdb8f9a97dec2b",
+        "type": "function",
+        "z": "b3b1d4d0f94076a4",
+        "name": "function 1",
+        "func": "let data = msg.payload;\n\nmsg.payload = {\n    temperatura: Number(data.temperatura),\n    umidade: Number(data.umidade),\n    luminosidade: Number(data.luminosidade),\n    qualidade_ar: Number(data.qualidade_ar)\n};\n\nmsg.measurement = \"sensores\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 220,
+        "wires": [
+            [
+                "3935b9d9df6c81e9"
+            ]
+        ]
+    },
+    {
+        "id": "3935b9d9df6c81e9",
+        "type": "influxdb out",
+        "z": "b3b1d4d0f94076a4",
+        "influxdb": "0a86fa189bd2cd3c",
+        "name": "",
+        "measurement": "sensores",
+        "precision": "",
+        "retentionPolicy": "",
+        "database": "database",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "FATEC",
+        "bucket": "FATEC",
+        "x": 930,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "3c61e97cc2004d95",
+        "type": "debug",
+        "z": "b3b1d4d0f94076a4",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 960,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "1ca52c5087a6ca55",
+        "type": "debug",
+        "z": "b3b1d4d0f94076a4",
+        "name": "json",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 610,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "0e88798231fd85fa",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-influxdb": "0.7.0"
+        }
+    }
+]
