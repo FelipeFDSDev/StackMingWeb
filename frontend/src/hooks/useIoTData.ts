@@ -12,12 +12,12 @@ const METRIC_META: Record<string, {
   max: number;
   threshold: { warn: number; danger: number };
 }> = {
-  temperature: { label: "Temperatura",  icon: "🌡", min: 15,  max: 40,   threshold: { warn: 28,   danger: 35   } },
-  humidity:    { label: "Umidade",       icon: "💧", min: 0,   max: 100,  threshold: { warn: 70,   danger: 85   } },
-  pressure:    { label: "Pressão",       icon: "📊", min: 950, max: 1050, threshold: { warn: 1030, danger: 1045 } },
-  co2:         { label: "CO₂",           icon: "🫧", min: 300, max: 1000, threshold: { warn: 600,  danger: 800  } },
-  luminosity:  { label: "Luminosidade",  icon: "☀",  min: 0,   max: 2000, threshold: { warn: 1500, danger: 1800 } },
-  noise:       { label: "Ruído",         icon: "🔊", min: 0,   max: 120,  threshold: { warn: 70,   danger: 90   } },
+  temperature: { label: "Temperatura", icon: "🌡", min: 15, max: 40, threshold: { warn: 28, danger: 35 } },
+  humidity: { label: "Umidade", icon: "💧", min: 0, max: 100, threshold: { warn: 70, danger: 85 } },
+  pressure: { label: "Pressão", icon: "📊", min: 950, max: 1050, threshold: { warn: 1030, danger: 1045 } },
+  co2: { label: "CO₂", icon: "🫧", min: 300, max: 1000, threshold: { warn: 600, danger: 800 } },
+  luminosity: { label: "Luminosidade", icon: "☀", min: 0, max: 2000, threshold: { warn: 1500, danger: 1800 } },
+  noise: { label: "Ruído", icon: "🔊", min: 0, max: 120, threshold: { warn: 70, danger: 90 } },
 };
 
 const POLL_INTERVAL_MS = 30_000; // 30 segundos
@@ -36,13 +36,13 @@ async function buildMetrics(summaries: MetricSummary[]): Promise<SensorMetric[]>
         // trend vazio não quebra o card
       }
       return {
-        label:     meta?.label     ?? s.metric,
-        icon:      meta?.icon      ?? "📡",
-        min:       meta?.min       ?? 0,
-        max:       meta?.max       ?? 100,
+        label: meta?.label ?? s.metric,
+        icon: meta?.icon ?? "📡",
+        min: meta?.min ?? 0,
+        max: meta?.max ?? 100,
         threshold: meta?.threshold ?? { warn: 70, danger: 90 },
-        value:     s.value,
-        unit:      s.unit,
+        value: s.value,
+        unit: s.unit,
         trend,
       } satisfies SensorMetric;
     })
@@ -53,13 +53,13 @@ async function buildMetrics(summaries: MetricSummary[]): Promise<SensorMetric[]>
 // ─── Hook principal ───────────────────────────────────────
 
 const EMPTY: IoTData = {
-  sensors:     [],
-  metrics:     [],
-  alerts:      [],
-  summary:     { totalSensors: 0, online: 0, offline: 0, warnings: 0, activeAlerts: 0 },
+  sensors: [],
+  metrics: [],
+  alerts: [],
+  summary: { totalSensors: 0, online: 0, offline: 0, warnings: 0, activeAlerts: 0 },
   lastRefresh: new Date(),
-  loading:     true,
-  error:       null,
+  loading: true,
+  error: null,
 };
 
 export function useIoTData(): IoTData & { refresh: () => void } {
@@ -78,8 +78,8 @@ export function useIoTData(): IoTData & { refresh: () => void } {
       // Trends buscados em paralelo depois
       const metrics = await buildMetrics(metricSummaries);
 
-      const online   = sensors.filter((s) => s.status === "online").length;
-      const offline  = sensors.filter((s) => s.status === "offline").length;
+      const online = sensors.filter((s) => s.status === "online").length;
+      const offline = sensors.filter((s) => s.status === "offline").length;
       const warnings = sensors.filter((s) => s.status === "warning").length;
       const activeAlerts = alerts.filter((a) => !a.resolved).length;
 
@@ -95,7 +95,7 @@ export function useIoTData(): IoTData & { refresh: () => void } {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
       console.error("[useIoTData]", message);
-      setData((prev) => ({
+      setData((prev: IoTData) => ({
         ...prev,
         loading: false,
         error: message,
