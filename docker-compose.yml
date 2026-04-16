@@ -86,7 +86,7 @@ services:
       CONSOLIDATION_CRON: "*/30 * * * * *"
       CONSOLIDATION_WINDOW_MINUTES: 5
 
-      # 🔥 IMPORTANTE: DESATIVADO MOCK
+      # IMPORTANTE: DESATIVADO MOCK - USAR DADOS REAIS DO MYSQL
       USE_MOCK: "false"
 
     depends_on:

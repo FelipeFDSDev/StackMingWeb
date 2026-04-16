@@ -74,41 +74,87 @@ function getInfluxClient() {
 }
 
 async function getRealReadings(windowMinutes = 5) {
-  const queryApi = getInfluxClient();
-  const bucket = process.env.INFLUX_BUCKET || "fatec";
+  // Tenta ler do InfluxDB primeiro
+  try {
+    const queryApi = getInfluxClient();
+    const bucket = process.env.INFLUX_BUCKET || "fatec";
 
-  const flux = `
-    from(bucket: "${bucket}")
-      |> range(start: -${windowMinutes}m)
-      |> filter(fn: (r) => r._measurement == "sensores")
-      |> pivot(
-          rowKey:["_time","sensor_id"],
-          columnKey: ["_field"],
-          valueColumn: "_value"
-      )
-  `;
+    const flux = `
+      from(bucket: "${bucket}")
+        |> range(start: -${windowMinutes}m)
+        |> filter(fn: (r) => r._measurement == "sensores")
+        |> pivot(
+            rowKey:["_time","sensor_id"],
+            columnKey: ["_field"],
+            valueColumn: "_value"
+        )
+    `;
 
-  const readings = [];
+    const readings = [];
 
-  await new Promise((resolve, reject) => {
-    queryApi.queryRows(flux, {
-      next(row, tableMeta) {
-        const obj = tableMeta.toObject(row);
+    await new Promise((resolve, reject) => {
+      queryApi.queryRows(flux, {
+        next(row, tableMeta) {
+          const obj = tableMeta.toObject(row);
 
-        readings.push({
-          sensorId: obj.sensor_id || "unknown",
-          metric: obj.metric || "unknown",
-          value: obj.value !== undefined ? parseFloat(obj.value) : null,
-          unit: obj.unit || "",
-          timestamp: new Date(obj._time),
-        });
-      },
-      error: reject,
-      complete: resolve,
+          readings.push({
+            sensorId: obj.sensor_id || "unknown",
+            metric: obj.metric || "unknown",
+            value: obj.value !== undefined ? parseFloat(obj.value) : null,
+            unit: obj.unit || "",
+            timestamp: new Date(obj._time),
+          });
+        },
+        error: reject,
+        complete: resolve,
+      });
     });
-  });
 
-  return readings;
+    if (readings.length > 0) {
+      console.log(`[influx] Encontrados ${readings.length} dados no InfluxDB`);
+      return readings;
+    }
+  } catch (err) {
+    console.log("[influx] Erro ao consultar InfluxDB:", err.message);
+  }
+
+  // Fallback para dados do MySQL
+  console.log("[influx] Fazendo fallback para dados do MySQL");
+  return getMySQLReadings(windowMinutes);
+}
+
+// ───────────────────────────────
+// MYSQL FALLBACK
+// ───────────────────────────────
+async function getMySQLReadings(windowMinutes = 5) {
+  const { getPool } = require("./db/mysql");
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT 
+         sensor_id,
+         metric,
+         avg_value AS value,
+         unit,
+         window_end AS timestamp
+       FROM metrics_consolidated 
+       WHERE window_end >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+       ORDER BY window_end DESC`,
+      [windowMinutes]
+    );
+
+    return rows.map(row => ({
+      sensorId: row.sensor_id,
+      metric: row.metric,
+      value: parseFloat(row.value),
+      unit: row.unit,
+      timestamp: new Date(row.timestamp)
+    }));
+  } catch (err) {
+    console.error("[mysql] Erro ao ler dados:", err);
+    return [];
+  }
 }
 
 // ───────────────────────────────
