@@ -3,7 +3,7 @@
  * Acesso ao InfluxDB (REAL ou MOCK opcional)
  */
 
-const USE_MOCK = process.env.USE_MOCK === "false";
+const USE_MOCK = process.env.USE_MOCK === "true";
 
 // ───────────────────────────────
 // CONFIG DAS MÉTRICAS (mock)

@@ -10,7 +10,7 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
+  origin: ["http://54.83.144.96", "http://54.83.144.96:80", "*"],
   methods: ["GET", "POST", "PATCH"],
 }));
 app.use(express.json());
@@ -22,10 +22,10 @@ app.use((req, _res, next) => {
 });
 
 // ─── Rotas ───────────────────────────────────────────────
-app.use("/api/health",  healthRouter);
+app.use("/api/health", healthRouter);
 app.use("/api/sensors", sensorsRouter);
 app.use("/api/metrics", metricsRouter);
-app.use("/api/alerts",  alertsRouter);
+app.use("/api/alerts", alertsRouter);
 
 // ─── 404 ─────────────────────────────────────────────────
 app.use((_req, res) => {
