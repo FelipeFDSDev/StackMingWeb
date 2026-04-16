@@ -9,12 +9,10 @@ const USE_MOCK = process.env.USE_MOCK !== "false";
 // CONFIG DAS MÉTRICAS (mock)
 // ───────────────────────────────
 const METRIC_CONFIGS = [
-  { metric: "temperature", unit: "°C", base: 24, noise: 6 },
-  { metric: "humidity", unit: "%", base: 62, noise: 15 },
-  { metric: "pressure", unit: "hPa", base: 1013, noise: 8 },
-  { metric: "co2", unit: "ppm", base: 420, noise: 60 },
-  { metric: "luminosity", unit: "lux", base: 780, noise: 200 },
-  { metric: "noise", unit: "dB", base: 43, noise: 15 },
+  { metric: "temperatura", unit: "°C", base: 24, noise: 6 },
+  { metric: "umidade", unit: "%", base: 62, noise: 15 },
+  { metric: "luminosidade", unit: "lux", base: 780, noise: 200 },
+  { metric: "qualidade_ar", unit: "ppm", base: 150, noise: 50 },
 ];
 
 const SENSOR_IDS = ["s1", "s2", "s3", "s4", "s5"];

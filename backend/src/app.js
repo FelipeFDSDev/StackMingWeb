@@ -10,7 +10,7 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────
 app.use(cors({
-  origin: ["http://54.83.144.96", "http://54.83.144.96:80", "*"],
+  origin: ["http://54.83.144.96", "http://54.83.144.96:80", "http://localhost:3000", "http://localhost:8080", "*"],
   methods: ["GET", "POST", "PATCH"],
 }));
 app.use(express.json());
