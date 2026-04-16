@@ -12,12 +12,10 @@ const METRIC_META: Record<string, {
   max: number;
   threshold: { warn: number; danger: number };
 }> = {
-  temperature: { label: "Temperatura", icon: "🌡", min: 15, max: 40, threshold: { warn: 28, danger: 35 } },
-  humidity: { label: "Umidade", icon: "💧", min: 0, max: 100, threshold: { warn: 70, danger: 85 } },
-  pressure: { label: "Pressão", icon: "📊", min: 950, max: 1050, threshold: { warn: 1030, danger: 1045 } },
-  co2: { label: "CO₂", icon: "🫧", min: 300, max: 1000, threshold: { warn: 600, danger: 800 } },
-  luminosity: { label: "Luminosidade", icon: "☀", min: 0, max: 2000, threshold: { warn: 1500, danger: 1800 } },
-  noise: { label: "Ruído", icon: "🔊", min: 0, max: 120, threshold: { warn: 70, danger: 90 } },
+  temperatura: { label: "Temperatura", icon: "", min: 15, max: 40, threshold: { warn: 28, danger: 35 } },
+  umidade: { label: "Umidade", icon: "", min: 0, max: 100, threshold: { warn: 70, danger: 85 } },
+  luminosidade: { label: "Luminosidade", icon: "", min: 0, max: 2000, threshold: { warn: 1500, danger: 1800 } },
+  qualidade_ar: { label: "Qualidade Ar", icon: "", min: 50, max: 300, threshold: { warn: 200, danger: 250 } },
 };
 
 const POLL_INTERVAL_MS = 30_000; // 30 segundos
