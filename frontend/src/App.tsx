@@ -48,7 +48,7 @@ function LandingPage({ onEnter }: { onEnter: () => void }) {
         <div className="grid">
           <div className="card"><h3>Backend</h3><p>APIs e regras de negócio desacopladas da telemetria</p></div>
           <div className="card"><h3>Frontend</h3><p>Interface moderna e responsiva</p></div>
-          <div className="card"><h3>MySQL</h3><p>Dados consolidados e estruturados</p></div>
+          <div className="card"><h3>InfluxDB</h3><p>Séries temporais consultadas diretamente pelo backend</p></div>
         </div>
       </section>
 

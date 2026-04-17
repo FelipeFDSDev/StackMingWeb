@@ -1,175 +1,87 @@
 /**
  * influx.js
- * Acesso ao InfluxDB (REAL ou MOCK opcional)
+ * Cliente InfluxDB singleton — leitura via Flux query API
  */
 
-const USE_MOCK = process.env.USE_MOCK !== "false";
+const { InfluxDB } = require("@influxdata/influxdb-client");
 
-// ───────────────────────────────
-// CONFIG DAS MÉTRICAS (mock)
-// ───────────────────────────────
-const METRIC_CONFIGS = [
-  { metric: "temperatura", unit: "°C", base: 24, noise: 6 },
-  { metric: "umidade", unit: "%", base: 62, noise: 15 },
-  { metric: "luminosidade", unit: "lux", base: 780, noise: 200 },
-  { metric: "qualidade_ar", unit: "ppm", base: 150, noise: 50 },
-];
+const INFLUX_URL    = process.env.INFLUX_URL        || "http://influxdb:8086";
+const INFLUX_TOKEN  = process.env.INFLUX_TOKEN       || "";
+const INFLUX_ORG    = process.env.INFLUX_ORG         || "FATEC";
+const INFLUX_BUCKET = process.env.INFLUX_BUCKET      || "FATEC";
+const MEASUREMENT   = process.env.INFLUX_MEASUREMENT || "sensores";
 
-const SENSOR_IDS = ["s1", "s2", "s3", "s4", "s5"];
+let _queryApi = null;
 
-// ───────────────────────────────
-// MOCK (fallback)
-// ───────────────────────────────
-function randomValue(base, noise) {
-  return parseFloat((base + (Math.random() - 0.5) * noise).toFixed(2));
+function getQueryApi() {
+  if (_queryApi) return _queryApi;
+  const client = new InfluxDB({ url: INFLUX_URL, token: INFLUX_TOKEN });
+  _queryApi = client.getQueryApi(INFLUX_ORG);
+  return _queryApi;
 }
 
-function getMockReadings(windowMinutes = 5) {
-  const now = Date.now();
-  const readings = [];
+/**
+ * Executa uma Flux query e retorna array de objetos row.
+ */
+async function fluxQuery(fluxScript) {
+  const api = getQueryApi();
+  const rows = [];
 
-  for (const sensorId of SENSOR_IDS) {
-    if (sensorId === "s4") continue;
-
-    for (const { metric, unit, base, noise } of METRIC_CONFIGS) {
-      for (let i = 0; i < 3; i++) {
-        const offset = Math.random() * windowMinutes * 60_000;
-
-        readings.push({
-          sensorId,
-          metric,
-          value: randomValue(base, noise),
-          unit,
-          timestamp: new Date(now - offset),
-        });
-      }
-    }
-  }
-
-  return readings;
-}
-
-// ───────────────────────────────
-// INFLUX REAL
-// ───────────────────────────────
-let influxQueryApi = null;
-
-function getInfluxClient() {
-  if (influxQueryApi) return influxQueryApi;
-
-  const { InfluxDB } = require("@influxdata/influxdb-client");
-
-  const client = new InfluxDB({
-    url: process.env.INFLUX_URL || "http://d_influxdb:8086",
-    token: process.env.INFLUX_TOKEN || "",
+  await new Promise((resolve, reject) => {
+    api.queryRows(fluxScript, {
+      next(row, tableMeta) {
+        rows.push(tableMeta.toObject(row));
+      },
+      error: reject,
+      complete: resolve,
+    });
   });
 
-  influxQueryApi = client.getQueryApi(
-    process.env.INFLUX_ORG || "FATEC"
-  );
-
-  return influxQueryApi;
+  return rows;
 }
 
-async function getRealReadings(windowMinutes = 5) {
-  // Tenta ler do InfluxDB primeiro
-  try {
-    const queryApi = getInfluxClient();
-    const bucket = process.env.INFLUX_BUCKET || "fatec";
-
-    const flux = `
-      from(bucket: "${bucket}")
-        |> range(start: -${windowMinutes}m)
-        |> filter(fn: (r) => r._measurement == "sensores")
-        |> pivot(
-            rowKey:["_time","sensor_id"],
-            columnKey: ["_field"],
-            valueColumn: "_value"
-        )
-    `;
-
-    const readings = [];
-
-    await new Promise((resolve, reject) => {
-      queryApi.queryRows(flux, {
-        next(row, tableMeta) {
-          const obj = tableMeta.toObject(row);
-
-          readings.push({
-            sensorId: obj.sensor_id || "unknown",
-            metric: obj.metric || "unknown",
-            value: obj.value !== undefined ? parseFloat(obj.value) : null,
-            unit: obj.unit || "",
-            timestamp: new Date(obj._time),
-          });
-        },
-        error: reject,
-        complete: resolve,
-      });
-    });
-
-    if (readings.length > 0) {
-      console.log(`[influx] Encontrados ${readings.length} dados no InfluxDB`);
-      return readings;
-    }
-  } catch (err) {
-    console.log("[influx] Erro ao consultar InfluxDB:", err.message);
-  }
-
-  // Fallback para dados do MySQL
-  console.log("[influx] Fazendo fallback para dados do MySQL");
-  return getMySQLReadings(windowMinutes);
-}
-
-// ───────────────────────────────
-// MYSQL FALLBACK
-// ───────────────────────────────
-async function getMySQLReadings(windowMinutes = 5) {
-  const { getPool } = require("./db/mysql");
-  const pool = getPool();
-
-  try {
-    const [rows] = await pool.query(
-      `SELECT 
-         sensor_id,
-         metric,
-         avg_value AS value,
-         unit,
-         window_end AS timestamp
-       FROM metrics_consolidated 
-       WHERE window_end >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-       ORDER BY window_end DESC`,
-      [windowMinutes]
-    );
-
-    return rows.map(row => ({
-      sensorId: row.sensor_id,
-      metric: row.metric,
-      value: parseFloat(row.value),
-      unit: row.unit,
-      timestamp: new Date(row.timestamp)
-    }));
-  } catch (err) {
-    console.error("[mysql] Erro ao ler dados:", err);
-    return [];
-  }
-}
-
-// ───────────────────────────────
-// FUNÇÃO PRINCIPAL
-// ───────────────────────────────
+/**
+ * Busca leituras brutas de todos os campos no intervalo informado.
+ * Retorna: [{ sensorId, field, value, time }]
+ */
 async function getReadings(windowMinutes = 5) {
-  if (USE_MOCK) {
-    console.log("[influx] Usando dados mockados");
-    return getMockReadings(windowMinutes);
-  }
+  const flux = `
+    from(bucket: "${INFLUX_BUCKET}")
+      |> range(start: -${windowMinutes}m)
+      |> filter(fn: (r) => r._measurement == "${MEASUREMENT}")
+      |> filter(fn: (r) => r._field != "sensor_id")
+  `;
 
-  console.log("[influx] Consultando InfluxDB REAL");
-  return getRealReadings(windowMinutes);
+  const rows = await fluxQuery(flux);
+
+  return rows.map((r) => ({
+    sensorId: r.sensor_id || r["sensor_id"] || "s1",
+    field:    r._field,
+    value:    Number(r._value),
+    time:     r._time,
+  }));
 }
 
-module.exports = {
-  getReadings,
-  METRIC_CONFIGS,
-  SENSOR_IDS
-};
+/**
+ * Busca a série temporal de um campo específico.
+ * Retorna: [{ value, time }]
+ */
+async function getTrend(field, windowMinutes = 60, limit = 50) {
+  const flux = `
+    from(bucket: "${INFLUX_BUCKET}")
+      |> range(start: -${windowMinutes}m)
+      |> filter(fn: (r) => r._measurement == "${MEASUREMENT}")
+      |> filter(fn: (r) => r._field == "${field}")
+      |> sort(columns: ["_time"])
+      |> limit(n: ${limit})
+  `;
+
+  const rows = await fluxQuery(flux);
+
+  return rows.map((r) => ({
+    value: Number(r._value),
+    time:  r._time,
+  }));
+}
+
+module.exports = { getReadings, getTrend, MEASUREMENT, INFLUX_BUCKET, INFLUX_ORG };

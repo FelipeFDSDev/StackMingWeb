@@ -1,21 +1,21 @@
 const { Router } = require("express");
-const { getPool } = require("../db/mysql");
+const { getReadings } = require("../db/influx");
 
 const router = Router();
 
 router.get("/", async (_req, res) => {
-  const status = { api: "ok", mysql: "unknown", uptime: process.uptime() };
-
+  let influx = "ok";
   try {
-    const pool = getPool();
-    await pool.query("SELECT 1");
-    status.mysql = "ok";
+    await getReadings(1);
   } catch {
-    status.mysql = "error";
+    influx = "error";
   }
 
-  const httpStatus = status.mysql === "ok" ? 200 : 503;
-  res.status(httpStatus).json(status);
+  res.json({
+    api:     "ok",
+    influx,
+    ts:      new Date().toISOString(),
+  });
 });
 
 module.exports = router;

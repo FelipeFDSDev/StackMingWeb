@@ -1,33 +1,47 @@
 require("dotenv").config();
 
-const app = require("./app");
-const { connectMySQL } = require("./db/mysql");
-const { startConsolidationJob } = require("./jobs/consolidation");
+const express = require("express");
+const cors    = require("cors");
 
+const sensorsRouter = require("./routes/sensors");
+const metricsRouter = require("./routes/metrics");
+const alertsRouter  = require("./routes/alerts");
+const healthRouter  = require("./routes/health");
+
+const app  = express();
 const PORT = process.env.PORT || 3000;
 
-async function main() {
-  // 1. Conecta MySQL
-  await connectMySQL();
-  console.log("[boot] MySQL conectado");
+// ── CORS ──────────────────────────────────────────────────────────
+// Permite qualquer origem (frontend rodando localmente)
+app.use(cors());
+app.use(express.json());
 
-  // 2. Roda migrations na inicialização
-  const { runMigrations } = require("./db/migrate");
-  await runMigrations();
-  console.log("[boot] Migrations OK");
+// ── Logger ────────────────────────────────────────────────────────
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 
-  // 3. Inicia job de consolidação periódica
-  startConsolidationJob();
-  console.log("[boot] Job de consolidação iniciado");
+// ── Rotas ─────────────────────────────────────────────────────────
+app.use("/api/health",  healthRouter);
+app.use("/api/sensors", sensorsRouter);
+app.use("/api/metrics", metricsRouter);
+app.use("/api/alerts",  alertsRouter);
 
-  // 4. Sobe o servidor HTTP
-  app.listen(PORT, () => {
-    console.log(`[boot] API rodando em http://localhost:${PORT}`);
-    console.log(`[boot] Modo mock: ${process.env.USE_MOCK === "true" ? "SIM" : "NÃO"}`);
-  });
-}
+// ── 404 ───────────────────────────────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ error: "Rota não encontrada" });
+});
 
-main().catch((err) => {
-  console.error("[boot] Falha fatal:", err);
-  process.exit(1);
+// ── Error handler ─────────────────────────────────────────────────
+app.use((err, _req, res, _next) => {
+  console.error("[ERROR]", err.message);
+  res.status(500).json({ error: "Erro interno do servidor", detail: err.message });
+});
+
+// ── Start ─────────────────────────────────────────────────────────
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Backend rodando em http://0.0.0.0:${PORT}`);
+  console.log(`   InfluxDB → ${process.env.INFLUX_URL}`);
+  console.log(`   Org: ${process.env.INFLUX_ORG} | Bucket: ${process.env.INFLUX_BUCKET}`);
 });

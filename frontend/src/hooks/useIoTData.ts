@@ -3,61 +3,60 @@ import { fetchSensors, fetchMetrics, fetchTrend, fetchAlerts } from "../services
 import { IoTData, SensorMetric, MetricSummary } from "../types/api";
 
 // ─── Metadados estáticos por métrica ─────────────────────
-// Esses valores não vêm do backend (são de domínio do frontend)
 
 const METRIC_META: Record<string, {
-  label: string;
-  icon: string;
-  min: number;
-  max: number;
+  label:     string;
+  icon:      string;
+  min:       number;
+  max:       number;
   threshold: { warn: number; danger: number };
 }> = {
-  temperatura: { label: "Temperatura", icon: "", min: 15, max: 40, threshold: { warn: 28, danger: 35 } },
-  umidade: { label: "Umidade", icon: "", min: 0, max: 100, threshold: { warn: 70, danger: 85 } },
-  luminosidade: { label: "Luminosidade", icon: "", min: 0, max: 2000, threshold: { warn: 1500, danger: 1800 } },
-  qualidade_ar: { label: "Qualidade Ar", icon: "", min: 50, max: 300, threshold: { warn: 200, danger: 250 } },
+  temperatura:  { label: "Temperatura",   icon: "🌡️",  min: 0,   max: 50,   threshold: { warn: 30, danger: 40 } },
+  umidade:      { label: "Umidade",       icon: "💧",  min: 0,   max: 100,  threshold: { warn: 70, danger: 85 } },
+  luminosidade: { label: "Luminosidade",  icon: "💡",  min: 0,   max: 2000, threshold: { warn: 1500, danger: 1800 } },
+  qualidade_ar: { label: "Qualidade Ar",  icon: "🌬️",  min: 0,   max: 300,  threshold: { warn: 200, danger: 250 } },
+  pressao:      { label: "Pressão",       icon: "📊",  min: 900, max: 1100, threshold: { warn: 1050, danger: 1080 } },
+  co2:          { label: "CO₂",           icon: "☁️",  min: 300, max: 2000, threshold: { warn: 1000, danger: 1500 } },
 };
 
-const POLL_INTERVAL_MS = 30_000; // 30 segundos
+const POLL_INTERVAL_MS = 30_000; // 30 s
 
-// ─── Montagem dos SensorMetric completos ─────────────────
+// ─── Monta SensorMetric com trends ───────────────────────
 
 async function buildMetrics(summaries: MetricSummary[]): Promise<SensorMetric[]> {
-  // Busca trends em paralelo para todas as métricas
-  const withTrends = await Promise.all(
+  return Promise.all(
     summaries.map(async (s) => {
       const meta = METRIC_META[s.metric];
       let trend: SensorMetric["trend"] = [];
       try {
-        trend = await fetchTrend(s.metric, 12);
+        trend = await fetchTrend(s.metric, 20);
       } catch {
-        // trend vazio não quebra o card
+        /* trend vazio não quebra o card */
       }
       return {
-        label: meta?.label ?? s.metric,
-        icon: meta?.icon ?? "📡",
-        min: meta?.min ?? 0,
-        max: meta?.max ?? 100,
+        label:     meta?.label     ?? s.metric,
+        icon:      meta?.icon      ?? "📡",
+        min:       meta?.min       ?? 0,
+        max:       meta?.max       ?? 100,
         threshold: meta?.threshold ?? { warn: 70, danger: 90 },
-        value: s.value,
-        unit: s.unit,
+        value:     s.value,
+        unit:      s.unit,
         trend,
       } satisfies SensorMetric;
     })
   );
-  return withTrends;
 }
 
-// ─── Hook principal ───────────────────────────────────────
+// ─── Hook ─────────────────────────────────────────────────
 
 const EMPTY: IoTData = {
-  sensors: [],
-  metrics: [],
-  alerts: [],
-  summary: { totalSensors: 0, online: 0, offline: 0, warnings: 0, activeAlerts: 0 },
+  sensors:  [],
+  metrics:  [],
+  alerts:   [],
+  summary:  { totalSensors: 0, online: 0, offline: 0, warnings: 0, activeAlerts: 0 },
   lastRefresh: new Date(),
-  loading: true,
-  error: null,
+  loading:  true,
+  error:    null,
 };
 
 export function useIoTData(): IoTData & { refresh: () => void } {
@@ -66,19 +65,17 @@ export function useIoTData(): IoTData & { refresh: () => void } {
 
   const load = useCallback(async () => {
     try {
-      // Todas as chamadas em paralelo (exceto trends que dependem de metrics)
       const [sensors, metricSummaries, alerts] = await Promise.all([
         fetchSensors(),
         fetchMetrics(),
         fetchAlerts("all"),
       ]);
 
-      // Trends buscados em paralelo depois
       const metrics = await buildMetrics(metricSummaries);
 
-      const online = sensors.filter((s) => s.status === "online").length;
-      const offline = sensors.filter((s) => s.status === "offline").length;
-      const warnings = sensors.filter((s) => s.status === "warning").length;
+      const online       = sensors.filter((s) => s.status === "online").length;
+      const offline      = sensors.filter((s) => s.status === "offline").length;
+      const warnings     = sensors.filter((s) => s.status === "warning").length;
       const activeAlerts = alerts.filter((a) => !a.resolved).length;
 
       setData({
@@ -88,25 +85,19 @@ export function useIoTData(): IoTData & { refresh: () => void } {
         summary: { totalSensors: sensors.length, online, offline, warnings, activeAlerts },
         lastRefresh: new Date(),
         loading: false,
-        error: null,
+        error:   null,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
       console.error("[useIoTData]", message);
-      setData((prev: IoTData) => ({
-        ...prev,
-        loading: false,
-        error: message,
-      }));
+      setData((prev) => ({ ...prev, loading: false, error: message }));
     }
   }, []);
 
   useEffect(() => {
     load();
     timerRef.current = setInterval(load, POLL_INTERVAL_MS);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [load]);
 
   return { ...data, refresh: load };

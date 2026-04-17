@@ -1,6 +1,5 @@
-node_modules
-build
-.git
-.gitignore
-Dockerfile
-docker-compose.yml
+**/node_modules
+**/.git
+**/dist
+**/.env.local
+**/coverage

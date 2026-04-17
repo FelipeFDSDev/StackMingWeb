@@ -1,14 +1,15 @@
 import { Sensor, MetricSummary, TrendPoint, Alert } from "../types/api";
 
-const BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8080";
+const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
-// ─── Helpers ──────────────────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
   if (!res.ok) throw new Error(`[api] ${path} → HTTP ${res.status}`);
   const json = await res.json();
-  return json.data as T;
+  // O backend sempre envolve a resposta em { data: ... }
+  return (json.data ?? json) as T;
 }
 
 // ─── Endpoints ────────────────────────────────────────────
@@ -21,7 +22,7 @@ export function fetchMetrics(): Promise<MetricSummary[]> {
   return get<MetricSummary[]>("/api/metrics");
 }
 
-export function fetchTrend(metric: string, points = 12): Promise<TrendPoint[]> {
+export function fetchTrend(metric: string, points = 20): Promise<TrendPoint[]> {
   return get<TrendPoint[]>(`/api/metrics/${metric}/trend?points=${points}`);
 }
 
@@ -30,11 +31,10 @@ export function fetchAlerts(resolved: "false" | "true" | "all" = "all"): Promise
 }
 
 export async function resolveAlert(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/alerts/${id}/resolve`, { method: "PATCH" });
-  if (!res.ok) throw new Error(`[api] resolve alert ${id} → HTTP ${res.status}`);
+  await fetch(`${BASE}/api/alerts/${id}/resolve`, { method: "PATCH" });
 }
 
-export async function fetchHealth(): Promise<{ api: string; mysql: string }> {
+export async function fetchHealth(): Promise<{ api: string; influx: string }> {
   const res = await fetch(`${BASE}/api/health`);
   return res.json();
 }

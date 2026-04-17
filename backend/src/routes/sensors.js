@@ -1,76 +1,55 @@
 /**
- * GET  /api/sensors          → lista todos os sensores com status atual
- * GET  /api/sensors/:id      → detalhe de um sensor
- * PATCH /api/sensors/:id     → atualiza campos (ex: nome, localização)
+ * GET /api/sensors
+ * Retorna lista de sensores derivada das leituras recentes do InfluxDB.
+ * Cada sensor único é identificado pelo tag sensor_id (ou "s1" como fallback).
  */
 
 const { Router } = require("express");
-const { getPool } = require("../db/mysql");
+const { getReadings } = require("../db/influx");
 
 const router = Router();
 
-// Lista todos
 router.get("/", async (_req, res, next) => {
   try {
-    const pool = getPool();
-    const [rows] = await pool.query(
-      `SELECT
-         id, name, location, status,
-         battery, signal_strength,
-         DATE_FORMAT(last_seen_at, '%Y-%m-%dT%TZ') AS last_seen_at,
-         DATE_FORMAT(created_at,   '%Y-%m-%dT%TZ') AS created_at
-       FROM sensors
-       ORDER BY name`
-    );
-    res.json({ data: rows });
-  } catch (err) { next(err); }
-});
+    const readings = await getReadings(10); // últimos 10 min
 
-// Detalhe + últimas leituras consolidadas
-router.get("/:id", async (req, res, next) => {
-  try {
-    const pool = getPool();
-    const { id } = req.params;
+    if (readings.length === 0) {
+      return res.json({ data: [] });
+    }
 
-    const [[sensor]] = await pool.query(
-      `SELECT id, name, location, status, battery, signal_strength, last_seen_at
-       FROM sensors WHERE id=?`,
-      [id]
-    );
-    if (!sensor) return res.status(404).json({ error: "Sensor não encontrado" });
+    // Agrupa por sensor_id para encontrar última leitura de cada sensor
+    const map = {};
+    for (const r of readings) {
+      const id = r.sensorId;
+      if (!map[id]) {
+        map[id] = {
+          id,
+          name:         `Sensor ${id.toUpperCase()}`,
+          location:     "FATEC — EC2",
+          status:       "online",
+          battery:      null,   // não disponível via MQTT simples
+          signal:       null,
+          last_seen_at: r.time,
+        };
+      } else {
+        // Mantém o timestamp mais recente
+        if (new Date(r.time) > new Date(map[id].last_seen_at)) {
+          map[id].last_seen_at = r.time;
+        }
+      }
+    }
 
-    // Última leitura de cada métrica
-    const [readings] = await pool.query(
-      `SELECT metric, avg_value AS value, unit, window_end AS recorded_at
-       FROM metrics_consolidated
-       WHERE sensor_id=?
-       GROUP BY metric
-       HAVING window_end = MAX(window_end)
-       ORDER BY metric`,
-      [id]
-    );
+    // Marca como offline sensores que não enviaram dados nos últimos 2 min
+    const TWO_MIN = 2 * 60 * 1000;
+    for (const s of Object.values(map)) {
+      const age = Date.now() - new Date(s.last_seen_at).getTime();
+      if (age > TWO_MIN) s.status = "offline";
+    }
 
-    res.json({ data: { ...sensor, readings } });
-  } catch (err) { next(err); }
-});
-
-// Atualiza sensor
-router.patch("/:id", async (req, res, next) => {
-  try {
-    const pool = getPool();
-    const { id } = req.params;
-    const { name, location } = req.body;
-
-    const fields = [];
-    const values = [];
-    if (name)     { fields.push("name=?");     values.push(name); }
-    if (location) { fields.push("location=?"); values.push(location); }
-    if (!fields.length) return res.status(400).json({ error: "Nenhum campo para atualizar" });
-
-    values.push(id);
-    await pool.query(`UPDATE sensors SET ${fields.join(",")} WHERE id=?`, values);
-    res.json({ success: true });
-  } catch (err) { next(err); }
+    res.json({ data: Object.values(map) });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import React from "react";
-import { SensorStatus } from "../data/mockSensors";
+import { SensorStatus } from "../types/api";
 import styles from "./StatusBadge.module.css";
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
 }
 
 const labels: Record<SensorStatus, string> = {
-  online: "Online",
+  online:  "Online",
   offline: "Offline",
   warning: "Alerta",
 };

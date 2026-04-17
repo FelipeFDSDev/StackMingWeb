@@ -1,288 +1,171 @@
-# Arquitetura de Dados IoT — Stack MING + Stack Web
+# Stack MING + Web — Monitoramento de Temperatura IoT
 
-[Playlist Youtube](https://www.youtube.com/playlist?list=PLYUDPcYmk9tgXM9M3PR0Ak5KVkwjpT1L1)
+Pipeline completo: **Google Colab → MQTT → Node-RED → InfluxDB → Grafana** + **Backend REST → Frontend React local**
 
-## Visão Geral
+---
 
-Este projeto implementa uma arquitetura moderna orientada a dados para cenários de **IoT (Internet das Coisas)**, separando claramente:
-
-* **Ingestão e processamento de dados em tempo real** → *Stack MING*
-* **Consumo, regras de negócio e aplicações** → *Stack Web*
-
-Essa separação permite **escalabilidade, performance e organização dos dados**, especialmente em cenários com alta geração de telemetria.
-
-
-## PARTE 1 — STACK MING (Data Pipeline em Tempo Real)
-
-A **Stack MING** é responsável por capturar, processar e armazenar **dados brutos (raw data)** vindos de dispositivos IoT.
-
-### Componentes
-
-#### 1. MQTT (Message Broker)
-
-**Função:** Comunicação entre dispositivos e sistema
-
-* Protocolo leve baseado em publish/subscribe
-* Ideal para IoT (baixo consumo de banda)
-* Dispositivos (ex: ESP32) publicam dados em tópicos
-
-Exemplo:
+## 🏗️ Arquitetura
 
 ```
-device/temperatura → 25.3
-device/umidade → 60%
+[Google Colab / ESP32 Wokwi]
+        │  MQTT JSON
+        ▼
+[EC2 — Docker Compose]
+  ┌─────────────────────────────────────┐
+  │  Mosquitto (MQTT Broker) :1883      │
+  │  Node-RED :8082  → InfluxDB :8083   │
+  │  Grafana :8084   ← InfluxDB         │
+  │  Backend Node.js :8080 ← InfluxDB   │
+  └─────────────────────────────────────┘
+        │  REST API (http://IP:8080)
+        ▼
+[Seu computador — localhost]
+  Frontend React (npm run dev) :5173
 ```
 
-O MQTT funciona como a **porta de entrada dos dados**
+---
 
+## 🚀 Deploy na EC2
 
-#### 2. Node-RED (Orquestração de Fluxos)
+### 1. Clonar e subir os serviços
 
-**Função:** Processamento e roteamento dos dados
-
-* Ferramenta low-code baseada em fluxos
-* Consome dados do MQTT
-* Permite:
-
-  * Transformação de dados
-  * Filtragem
-  * Enriquecimento
-  * Encaminhamento para bancos
-
-Exemplo de fluxo:
-
-```
-MQTT → Node-RED → InfluxDB
+```bash
+git clone https://github.com/FelipeFDSDev/StackMingWeb
+cd StackMingWeb
+docker compose up -d --build
 ```
 
-Atua como o **cérebro do pipeline em tempo real**
+### 2. Verificar que tudo subiu
 
-
-#### 3. InfluxDB (Banco de Dados Time Series)
-
-**Função:** Armazenamento de dados brutos
-
-* Banco otimizado para séries temporais
-* Alta performance para escrita contínua
-* Ideal para telemetria (sensores, logs, métricas)
-
-Estrutura:
-
-* timestamp
-* measurement (ex: temperatura)
-* tags (ex: device_id)
-* fields (valor)
-
-É o **repositório oficial dos dados brutos**
-
-
-#### 4. Grafana (Visualização)
-
-**Função:** Monitoramento em tempo real
-
-* Dashboards interativos
-* Conectado ao InfluxDB
-* Permite visualizar:
-
-  * séries temporais
-  * alertas
-  * métricas em tempo real
-
-É a **camada de observabilidade da stack MING**
-
-
-### Fluxo Completo da Stack MING
-
-```
-[Device IoT]
-     ↓
-   MQTT
-     ↓
- Node-RED
-     ↓
- InfluxDB
-     ↓
-  Grafana
+```bash
+docker compose ps
+# Todos os serviços devem estar "Up (healthy)"
 ```
 
+### 3. Portas na EC2 (Security Group AWS)
 
-### Papel da Stack MING
+Liberar **Inbound Rules**:
 
-* Alta taxa de ingestão de dados
-* Baixa latência
-* Armazenamento eficiente de telemetria
-* Desacoplamento entre dispositivos e aplicações
+| Porta | Serviço        |
+|-------|----------------|
+| 8080  | Backend REST   |
+| 8082  | Node-RED UI    |
+| 8083  | InfluxDB       |
+| 8084  | Grafana        |
+| 1883  | MQTT           |
 
+---
 
-## PARTE 2 — STACK WEB (Aplicação e Negócio)
+## 💻 Rodar o Frontend Localmente
 
-A **Stack Web** é responsável por consumir os dados processados e oferecer funcionalidades ao usuário final.
+```bash
+cd frontend
 
-### Componentes
+# 1. Ajuste o IP da EC2 no .env (se necessário)
+# VITE_API_URL=http://174.129.124.8:8080
 
-#### 1. Backend
+# 2. Instalar dependências
+npm install
 
-**Função:** Regras de negócio e integração
+# 3. Rodar em modo desenvolvimento
+npm run dev
 
-* Desenvolvido em Node.js / Express (ou similar)
-* Responsável por:
-
-  * APIs REST
-  * Processamento de dados consolidados
-  * Integração com banco relacional
-
-Importante:
-O backend **NÃO deve consumir dados brutos diretamente em alta frequência**
-
-
-#### 2. Frontend
-
-**Função:** Interface do usuário
-
-* Aplicações web (React, Angular, etc.)
-* Consome APIs do backend
-* Exibe:
-
-  * dashboards
-  * relatórios
-  * dados consolidados
-
-
-#### 3. MySQL (Banco Relacional)
-
-**Função:** Armazenamento de dados consolidados
-
-* Dados estruturados e organizados
-* Ideal para:
-
-  * relatórios
-  * histórico tratado
-  * dados de negócio
-
-Exemplo:
-
-* média de temperatura por dia
-* alertas registrados
-* eventos processados
-
-
-### Fluxo da Stack Web
-
-```
-InfluxDB → Backend → MySQL → Frontend
+# Acesse: http://localhost:5173
 ```
 
+> O frontend consome a API do backend na EC2. Não acessa o InfluxDB diretamente.
 
-## PARTE 3 — SEPARAÇÃO: DADOS BRUTOS vs CONSOLIDADOS
+---
 
-### Dados Brutos (Raw Data)
+## 📡 Publicar dados via Google Colab / Python
 
-* Origem: dispositivos IoT
-* Destino: InfluxDB
+```python
+import paho.mqtt.client as mqtt
+import json, time, random
 
-Características:
+BROKER = "174.129.124.8"
+PORT   = 1883
+TOPIC  = "sensores/data"
 
-* Alta frequência (ex: a cada segundo)
-* Grande volume
-* Não processados
-* Usados para:
+client = mqtt.Client()
+client.connect(BROKER, PORT)
 
-  * monitoramento
-  * análise técnica
-  * auditoria
-
-Exemplo:
-
-```
-timestamp: 10:00:01 → temperatura: 25.1
-timestamp: 10:00:02 → temperatura: 25.2
-timestamp: 10:00:03 → temperatura: 25.3
-```
-
-
-### Dados Consolidados (Processed Data)
-
-* Origem: backend
-* Destino: MySQL
-
-Características:
-
-* Agregados e tratados
-* Baixa frequência
-* Estruturados para negócio
-
-Exemplo:
-
-```
-data: 2026-03-28
-temperatura_media: 25.2
-temperatura_max: 26.1
+while True:
+    payload = {
+        "sensor_id":  "s1",
+        "temperatura": round(random.uniform(20, 35), 2),
+        "umidade":     round(random.uniform(50, 80), 2),
+    }
+    client.publish(TOPIC, json.dumps(payload))
+    print("Publicado:", payload)
+    time.sleep(5)
 ```
 
+---
 
-## POR QUE SEPARAR?
+## 🔧 Serviços e URLs
 
-### Problema (sem separação)
+| Serviço   | URL                          |
+|-----------|------------------------------|
+| Frontend  | http://localhost:5173        |
+| Backend   | http://174.129.124.8:8080    |
+| Node-RED  | http://174.129.124.8:8082    |
+| Grafana   | http://174.129.124.8:8084    |
+| InfluxDB  | http://174.129.124.8:8083    |
 
-Se o backend consumir diretamente dados brutos:
+---
 
-* Sobrecarga de processamento
-* Alto consumo de CPU/memória
-* Gargalos de performance
-* APIs lentas
-* Dificuldade de escala
+## ⚙️ Variáveis de configuração
 
+### InfluxDB
 
-### Solução (arquitetura com MING)
+| Parâmetro    | Valor       |
+|--------------|-------------|
+| URL interna  | `http://influxdb:8086` |
+| Org          | `FATEC`     |
+| Bucket       | `FATEC`     |
+| Measurement  | `sensores`  |
 
-A Stack MING **absorve toda a carga de telemetria**, enquanto o backend trabalha apenas com dados relevantes.
+### Regras de negócio (alertas)
 
+| Estado   | Temperatura       |
+|----------|-------------------|
+| Normal   | 15 °C – 30 °C     |
+| Alerta   | 30–40 °C ou < 15  |
+| Crítico  | > 40 °C           |
 
+---
 
-## ARQUITETURA FINAL (ENTERPRISE)
-
-> “Quem gera muito dado não deve conversar direto com quem atende o usuário”
+## 📁 Estrutura do projeto
 
 ```
-             ┌────────────────────┐
-             │   Device (IoT)     │
-             └────────┬───────────┘
-                      ↓
-                 [ MQTT ]
-                      ↓
-               [ Node-RED ]
-                      ↓
-               [ InfluxDB ]  ← Dados Brutos
-                      ↓
-         ┌────────────┴────────────┐
-         ↓                         ↓
-    [ Grafana ]            [ Backend API ]
-                                ↓
-                           [ MySQL ]  ← Dados Consolidados
-                                ↓
-                           [ Frontend ]
+StackMingWeb/
+├── docker-compose.yml     ← EC2: todos os serviços (sem MySQL, sem frontend)
+├── backend/               ← API REST Node.js + InfluxDB
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+│       ├── index.js
+│       ├── db/influx.js
+│       └── routes/{sensors,metrics,alerts,health}.js
+├── frontend/              ← React + Vite (roda local)
+│   ├── .env               ← VITE_API_URL=http://IP:8080
+│   ├── index.html
+│   ├── vite.config.ts
+│   └── src/
+├── nodered/
+│   ├── flows.json         ← MQTT → InfluxDB
+│   └── package.json       ← node-red-contrib-influxdb
+└── mosquitto/
+    └── mosquitto.conf
 ```
 
+---
 
-## BENEFÍCIOS DA ARQUITETURA
+## 👨‍💻 Autores
 
-✔ Alta escalabilidade <br>
-✔ Separação de responsabilidades <br>
-✔ Performance otimizada <br>
-✔ Backend desacoplado da telemetria <br>
-✔ Melhor organização dos dados <br>
-✔ Facilidade para analytics e IA no futuro
+- Arthur Gaspare Camzano  
+- Felipe Ferreira De Souza  
+- Pedro Henrique Cardozo Dias
 
-
-## CONCLUSÃO
-
-A combinação da **Stack MING + Stack Web** cria uma arquitetura robusta e pronta para cenários reais de IoT e Big Data.
-
-* A **Stack MING** resolve o problema de ingestão massiva
-* A **Stack Web** resolve o problema de entrega de valor ao usuário
-
-Juntas, permitem evoluir facilmente para:
-
-* Machine Learning
-* Analytics avançado
-* Sistemas preditivos
+**FATEC Sorocaba — Programação Multiplataforma — 2026**

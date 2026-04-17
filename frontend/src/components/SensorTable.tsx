@@ -7,7 +7,8 @@ interface Props {
   sensors: Sensor[];
 }
 
-function BatteryBar({ value }: { value: number }) {
+function BatteryBar({ value }: { value: number | null }) {
+  if (value === null) return <span className={styles.na}>—</span>;
   const color = value < 20 ? "#ef4444" : value < 40 ? "#f59e0b" : "#10b981";
   return (
     <div className={styles.batteryWrap}>
@@ -19,17 +20,15 @@ function BatteryBar({ value }: { value: number }) {
   );
 }
 
-function SignalBars({ value }: { value: number }) {
+function SignalBars({ value }: { value: number | null }) {
+  if (value === null) return <span className={styles.na}>—</span>;
   return (
     <div className={styles.signalWrap}>
-      {[25, 50, 75, 100].map((threshold) => (
+      {[25, 50, 75, 100].map((t) => (
         <div
-          key={threshold}
+          key={t}
           className={styles.signalBar}
-          style={{
-            background: value >= threshold ? "#6366f1" : "#e5e7eb",
-            height: 4 + (threshold / 25) * 3,
-          }}
+          style={{ background: value >= t ? "#6366f1" : "#e5e7eb", height: 4 + (t / 25) * 3 }}
         />
       ))}
       <span className={styles.signalLabel}>{value}%</span>
@@ -46,34 +45,40 @@ function formatLastSeen(iso: string | null): string {
   return `${Math.floor(diff / 3600)}h atrás`;
 }
 
-export const SensorTable: React.FC<Props> = ({ sensors }) => (
-  <div className={styles.wrapper}>
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th>Sensor</th>
-          <th>Localização</th>
-          <th>Status</th>
-          <th>Bateria</th>
-          <th>Sinal</th>
-          <th>Última leitura</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sensors.map((s) => (
-          <tr key={s.id} className={s.status === "offline" ? styles.offline : ""}>
-            <td>
-              <div className={styles.sensorName}>{s.name}</div>
-              <div className={styles.sensorId}>{s.id.toUpperCase()}</div>
-            </td>
-            <td className={styles.location}>{s.location}</td>
-            <td><StatusBadge status={s.status} /></td>
-            <td><BatteryBar value={s.battery} /></td>
-            <td><SignalBars value={s.signal} /></td>
-            <td className={styles.lastSeen}>{formatLastSeen(s.last_seen_at)}</td>
+export const SensorTable: React.FC<Props> = ({ sensors }) => {
+  if (sensors.length === 0) {
+    return <div className={styles.empty}>Nenhum sensor detectado nos últimos 10 min.</div>;
+  }
+
+  return (
+    <div className={styles.wrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Sensor</th>
+            <th>Localização</th>
+            <th>Status</th>
+            <th>Bateria</th>
+            <th>Sinal</th>
+            <th>Última leitura</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+        </thead>
+        <tbody>
+          {sensors.map((s) => (
+            <tr key={s.id} className={s.status === "offline" ? styles.offline : ""}>
+              <td>
+                <div className={styles.sensorName}>{s.name}</div>
+                <div className={styles.sensorId}>{s.id.toUpperCase()}</div>
+              </td>
+              <td className={styles.location}>{s.location}</td>
+              <td><StatusBadge status={s.status} /></td>
+              <td><BatteryBar value={s.battery} /></td>
+              <td><SignalBars value={s.signal} /></td>
+              <td className={styles.lastSeen}>{formatLastSeen(s.last_seen_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};

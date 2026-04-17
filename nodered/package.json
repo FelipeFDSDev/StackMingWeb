@@ -1,6 +1,8 @@
 {
-    "name": "node-red-project",
-    "description": "A Node-RED Project",
-    "version": "0.0.1",
-    "private": true
+    "name": "nodered-fatec",
+    "description": "Node-RED — Stack MING FATEC",
+    "version": "1.0.0",
+    "dependencies": {
+        "node-red-contrib-influxdb": "^0.7.0"
+    }
 }

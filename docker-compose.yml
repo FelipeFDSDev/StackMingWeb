@@ -1,11 +1,12 @@
 services:
 
   # ========================
-  #     MQTT
+  #     MQTT (Mosquitto)
   # ========================
   mqtt:
     image: eclipse-mosquitto
     container_name: d_mqtt
+    restart: unless-stopped
     ports:
       - "1883:1883"
     volumes:
@@ -17,13 +18,16 @@ services:
   nodered:
     image: nodered/node-red
     container_name: d_nodered
+    restart: unless-stopped
     ports:
       - "8082:1880"
     volumes:
       - ./nodered:/data
+    environment:
+      - TZ=America/Sao_Paulo
 
   # ========================
-  #     INFLUXDB
+  #     INFLUXDB 2.x
   # ========================
   influxdb:
     image: influxdb:2
@@ -31,13 +35,20 @@ services:
     restart: unless-stopped
     ports:
       - "8083:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
+      DOCKER_INFLUXDB_INIT_ORG: FATEC
+      DOCKER_INFLUXDB_INIT_BUCKET: FATEC
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "Ju-y99EX_FWketmNuXTQKUAS75mfxf0BI7XUXgYxTenjrHX7zNRMTJlkwhwEgUyATF23EG0G7A1pTHyitLOIVQ=="
     volumes:
       - influxdb-data:/var/lib/influxdb2
     healthcheck:
       test: ["CMD", "influx", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   # ========================
   #     GRAFANA
@@ -45,13 +56,14 @@ services:
   grafana:
     image: grafana/grafana
     container_name: d_grafana
+    restart: unless-stopped
     ports:
       - "8084:3000"
     volumes:
       - grafana-data:/var/lib/grafana
 
   # ========================
-  #     BACKEND (CORRIGIDO)
+  #     BACKEND (API REST)
   # ========================
   backend:
     build: ./backend
@@ -60,71 +72,17 @@ services:
     ports:
       - "8080:3000"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3000
-
-      # ========================
-      # MYSQL
-      # ========================
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: iot_consolidated
-      MYSQL_USER: iot_user
-      MYSQL_PASSWORD: iot_pass
-
-      # ========================
-      # INFLUXDB (CORRETO)
-      # ========================
+      # InfluxDB connection (internal Docker network name)
       INFLUX_URL: http://influxdb:8086
-      INFLUX_TOKEN: Ju-y99EX_FWketmNuXTQKUAS75mfxf0BI7XUXgYxTenjrHX7zNRMTJlkwhwEgUyATF23EG0G7A1pTHyitLOIVQ==
+      INFLUX_TOKEN: "Ju-y99EX_FWketmNuXTQKUAS75mfxf0BI7XUXgYxTenjrHX7zNRMTJlkwhwEgUyATF23EG0G7A1pTHyitLOIVQ=="
       INFLUX_ORG: FATEC
-      INFLUX_BUCKET: fatec
-
-      # ========================
-      # PIPELINE
-      # ========================
-      CONSOLIDATION_CRON: "*/30 * * * * *"
-      CONSOLIDATION_WINDOW_MINUTES: 5
-
-      # IMPORTANTE: DESATIVADO MOCK - USAR DADOS REAIS DO MYSQL
-      USE_MOCK: "false"
-
+      INFLUX_BUCKET: FATEC
+      INFLUX_MEASUREMENT: sensores
     depends_on:
-      mysql:
-        condition: service_healthy
       influxdb:
         condition: service_healthy
-
-  # ========================
-  #     FRONTEND
-  # ========================
-  frontend:
-    build: ./frontend
-    container_name: d_frontend
-    ports:
-      - "80:80"
-
-  # ========================
-  #     MYSQL
-  # ========================
-  mysql:
-    image: mysql:8.4
-    container_name: d_mysql
-    restart: unless-stopped
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: iot_consolidated
-      MYSQL_USER: iot_user
-      MYSQL_PASSWORD: iot_pass
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 # ========================
 #     VOLUMES
@@ -132,4 +90,3 @@ services:
 volumes:
   influxdb-data:
   grafana-data:
-  mysql-data:

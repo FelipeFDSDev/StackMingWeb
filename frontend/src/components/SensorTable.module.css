@@ -5,6 +5,18 @@
   background: #ffffff;
 }
 
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.na {
+  color: #d1d5db;
+  font-size: 13px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -24,18 +36,15 @@
 }
 
 .table thead th:first-child { border-radius: 14px 0 0 0; }
-.table thead th:last-child { border-radius: 0 14px 0 0; }
+.table thead th:last-child  { border-radius: 0 14px 0 0; }
 
 .table tbody tr {
   border-bottom: 1px solid #f3f4f6;
   transition: background 0.15s;
 }
-
 .table tbody tr:last-child { border-bottom: none; }
-
-.table tbody tr:hover { background: #f9fafb; }
-
-.table tbody tr.offline { opacity: 0.5; }
+.table tbody tr:hover      { background: #f9fafb; }
+.table tbody tr.offline    { opacity: 0.5; }
 
 .table td {
   padding: 14px 16px;
@@ -43,59 +52,16 @@
   vertical-align: middle;
 }
 
-.sensorName {
-  font-weight: 600;
-  color: #111827;
-  font-size: 13px;
-}
+.sensorName { font-weight: 600; color: #111827; font-size: 13px; }
+.sensorId   { font-size: 10px; color: #9ca3af; font-family: monospace; margin-top: 2px; }
+.location   { color: #6b7280 !important; font-size: 12px !important; }
+.lastSeen   { color: #6b7280 !important; font-size: 12px !important; }
 
-.sensorId {
-  font-size: 10px;
-  color: #9ca3af;
-  font-family: monospace;
-  margin-top: 2px;
-}
-
-.location {
-  color: #6b7280 !important;
-  font-size: 12px !important;
-}
-
-.lastSeen {
-  color: #6b7280 !important;
-  font-size: 12px !important;
-}
-
-.batteryWrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.batteryTrack {
-  width: 60px;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.signalWrap {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-}
-
-.signalBar {
-  width: 5px;
-  border-radius: 1px;
-}
-
-.signalLabel {
-  font-size: 11px;
-  color: #6b7280;
-  margin-left: 4px;
-}
+.batteryWrap  { display: flex; align-items: center; gap: 8px; }
+.batteryTrack { width: 60px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+.signalWrap   { display: flex; align-items: flex-end; gap: 2px; }
+.signalBar    { width: 5px; border-radius: 1px; }
+.signalLabel  { font-size: 11px; color: #6b7280; margin-left: 4px; }
 
 @media (prefers-color-scheme: dark) {
   .wrapper { background: #1f2937; border-color: #374151; }
@@ -105,5 +71,4 @@
   .table td { color: #d1d5db; }
   .sensorName { color: #f9fafb; }
   .batteryTrack { background: #374151; }
-  .signalBar { background: #374151; }
 }

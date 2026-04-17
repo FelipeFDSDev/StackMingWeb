@@ -1,26 +1,19 @@
 {
   "name": "iot-backend",
-  "version": "1.0.0",
-  "description": "Backend IoT — lê InfluxDB, consolida no MySQL, serve REST API para o frontend",
+  "version": "2.0.0",
+  "description": "Backend API leve — leitura direta do InfluxDB, sem banco relacional",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "migrate": "node src/db/migrate.js",
-    "seed": "node src/db/seed.js"
+    "dev": "node --watch src/index.js"
   },
   "dependencies": {
-    "@influxdata/influxdb-client": "^1.33.2",
+    "@influxdata/influxdb-client": "^1.33.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "mysql2": "^3.9.7",
-    "node-cron": "^3.0.3"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.1"
+    "express": "^4.19.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   }
 }
